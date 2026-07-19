@@ -1,9 +1,4 @@
-// deno-lint-ignore-file explicit-naming/camel-case-object-keys -- a lint
-// visitor is a dispatch table keyed by AST node type; the API takes an
-// object, and building it from pairs would drop the typed `node` param.
-
-/**
- * `pascal-case-types` — a name that starts uppercase and carries no underscores. */
+/** A name that starts uppercase and carries no underscores. */
 const PASCAL_CASE_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
 
 /** Report an identifier whose name is not PascalCase. */

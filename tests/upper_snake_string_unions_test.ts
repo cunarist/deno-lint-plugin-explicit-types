@@ -25,10 +25,13 @@ Deno.test("upper-snake-string-unions: ignores non-string union members", () => {
   assertValid(plugin, 'type Mixed = "OPEN" | 42 | { id: string };');
 });
 
-Deno.test("upper-snake-string-unions: ignores unions outside a type alias", () => {
-  assertValid(plugin, 'interface Box { mode: "fast" | "slow" }');
-  assertValid(plugin, 'function go(mode: "fast" | "slow") {}');
-  assertValid(plugin, 'const mode: "fast" | "slow" = "fast";');
+Deno.test("upper-snake-string-unions: checks unions outside a type alias", () => {
+  // A union written inline on an interface member is the same enumeration as
+  // one behind an alias, so it is held to the same casing.
+  assertInvalid(plugin, 'interface Box { mode: "fast" | "slow" }', 2);
+  assertInvalid(plugin, 'function go(mode: "fast" | "slow") {}', 2);
+  assertInvalid(plugin, 'const mode: "fast" | "slow" = "fast";', 2);
+  assertValid(plugin, 'interface Box { mode: "FAST" | "SLOW" }');
 });
 
 Deno.test("upper-snake-string-unions: rejects lowercase and mixed-case members", () => {

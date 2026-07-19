@@ -1,7 +1,3 @@
-// deno-lint-ignore-file explicit-naming/camel-case-object-keys -- a lint
-// visitor is a dispatch table keyed by AST node type; the API takes an
-// object, and building it from pairs would drop the typed `node` param.
-
 /**
  * `no-keyof` — rejects the `keyof` type operator in any type position.
  *

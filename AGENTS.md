@@ -32,17 +32,12 @@ belongs in this file, not in chat.
   repo-wide.** `deno.json` loads `./src/concrete/mod.ts` and
   `./src/naming/mod.ts` as lint plugins, so a new rule immediately applies to
   the source that implements it. When a rule fires here, fix the source.
-- `camel-case-object-keys` hits two dispatch tables this package cannot avoid,
-  and they are handled differently on purpose:
-  - **Rule records** (`concreteRules`, `namingRules`) are built with
-    `Object.fromEntries` from `[id, rule]` pairs. A rule record really is a
-    lookup keyed by rule id, so the ids belong in value position — the rule is
-    right, and conforming costs nothing.
-  - **Lint visitors** keep their object literal and carry a file-level
-    `deno-lint-ignore-file` naming the rule and the reason. Building a visitor
-    from pairs type-checks, but the `node` parameter degrades to `any` —
-    verified — which trades away exactly what this package exists to protect.
-    Prefer that narrow, stated exception over a repo-wide `rules.exclude`.
+- **No file in this repo carries a `deno-lint-ignore`.** Rule records
+  (`concreteRules`, `namingRules`) are built with `Object.fromEntries` from
+  `[id, rule]` pairs, because a rule record really is a lookup keyed by rule id,
+  so the ids belong in value position. Lint visitors keep their object literal
+  and now pass on their own, since their keys are AST node names in PascalCase
+  rather than UPPER_SNAKE_CASE.
 - Every rule has tests. Use `Deno.lint.runPlugin`, which is only available under
   `deno test`.
 - Annotate the plugin as `Deno.lint.Plugin` — visitor callback params infer from
@@ -203,29 +198,38 @@ individually nameable and disableable.
 
 ### Preset: `naming` — names carry the contract
 
-| Rule                        | Src | Enforces                                                    |
-| --------------------------- | --- | ----------------------------------------------------------- |
-| `pascal-case-types`         | mem | Class, interface, type alias, and enum names are PascalCase |
-| `upper-snake-string-unions` | mem | String literals in a union type alias are UPPER_SNAKE_CASE  |
-| `camel-case-object-keys`    | new | Object literal keys and type members are camelCase          |
-| `no-enum`                   | new | No `enum` — use an UPPER_SNAKE_CASE string union            |
+| Rule                         | Src | Enforces                                                    |
+| ---------------------------- | --- | ----------------------------------------------------------- |
+| `pascal-case-types`          | mem | Class, interface, type alias, and enum names are PascalCase |
+| `upper-snake-string-unions`  | mem | String literals in any union type are UPPER_SNAKE_CASE      |
+| `no-upper-snake-object-keys` | new | No UPPER_SNAKE_CASE object keys or type members             |
+| `no-enum`                    | new | No `enum` — use an UPPER_SNAKE_CASE string union            |
 
 These three interlock. `no-enum` removes the construct;
 `upper-snake-string-unions` governs the string union that replaces it; and
-`camel-case-object-keys` stops those UPPER_SNAKE_CASE members from being turned
-back into a lookup table — an object is a struct, so a union-keyed lookup must
-be a `switch` function, which fails to compile when a member is added.
+`no-upper-snake-object-keys` stops those UPPER_SNAKE_CASE members from being
+turned back into a lookup table — an object is a struct, so a union-keyed lookup
+must be a `switch` function, which fails to compile when a member is added.
 
-`camel-case-object-keys` is the value-level half of `no-index-signatures` and
-`no-mapped-types`. It checks object literals and `TSPropertySignature`, and
-deliberately skips class members (`static MAX_RETRIES = 5` is a constant),
-destructuring patterns, and computed keys.
+**`no-upper-snake-object-keys` was narrowed after being tried on `../memona`.**
+It originally demanded camelCase keys outright, which produced over a hundred
+reports on names nobody there had chosen: custom element tags (HTML requires the
+hyphen), `data-*` attributes, HTTP headers, ProseMirror keymaps and command
+names, `$`-prefixed library APIs, and this package's own AST visitor keys. All
+of them are foreign vocabularies rather than lookup tables. Restricting the rule
+to UPPER_SNAKE_CASE — the casing `upper-snake-string-unions` itself prescribes —
+keeps the intended target and clears every one of those, and it let the
+`deno-lint-ignore-file` lines come out of this repo's own rule files.
 
-Deno's built-in `camelcase` does **not** make it redundant. Verified against
-2.9.3: the built-in catches `snake_case` identifiers, object keys, and interface
-members, but accepts `PENDING` as a constant and accepts any quoted key — its
-own hint offers quoting as the way to silence it. Those two forms are exactly
-what a map-shaped object uses.
+The two rules divide cleanly with Deno's built-in `camelcase`, verified against
+2.9.3: the built-in reports unquoted `snake_case` keys, and accepts both
+`PENDING` and any quoted key. This rule covers exactly the `PENDING` case the
+built-in waves through, and leaves quoted foreign names alone.
+
+`upper-snake-string-unions` visits `TSUnionType` rather than
+`TSTypeAliasDeclaration`, so a union written inline on an interface member
+(`type: "Directory" | "File"`) is held to the same casing as an aliased one.
+Checking only aliases left that entire shape unguarded.
 
 ## Where the through-line stops
 

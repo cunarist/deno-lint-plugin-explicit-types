@@ -16,8 +16,8 @@
  * @module
  */
 
-import { camelCaseObjectKeys } from "./camel-case-object-keys.ts";
 import { noEnum } from "./no-enum.ts";
+import { noUpperSnakeObjectKeys } from "./no-upper-snake-object-keys.ts";
 import { pascalCaseTypes } from "./pascal-case-types.ts";
 import { upperSnakeStringUnions } from "./upper-snake-string-unions.ts";
 
@@ -26,12 +26,12 @@ import { upperSnakeStringUnions } from "./upper-snake-string-unions.ts";
  *
  * Built from pairs rather than written as an object literal: a rule record is
  * a lookup keyed by rule id, so the ids belong in value position. This is
- * `camel-case-object-keys` applied to itself.
+ * `no-upper-snake-object-keys` applied to itself.
  */
 export const namingRules: Deno.lint.Plugin["rules"] = Object.fromEntries([
   ["pascal-case-types", pascalCaseTypes],
   ["upper-snake-string-unions", upperSnakeStringUnions],
-  ["camel-case-object-keys", camelCaseObjectKeys],
+  ["no-upper-snake-object-keys", noUpperSnakeObjectKeys],
   ["no-enum", noEnum],
 ]);
 
@@ -42,8 +42,8 @@ const plugin: Deno.lint.Plugin = {
 };
 
 // Individual rules, re-exported for composition.
-export { camelCaseObjectKeys } from "./camel-case-object-keys.ts";
 export { noEnum } from "./no-enum.ts";
+export { noUpperSnakeObjectKeys } from "./no-upper-snake-object-keys.ts";
 export { pascalCaseTypes } from "./pascal-case-types.ts";
 export { upperSnakeStringUnions } from "./upper-snake-string-unions.ts";
 

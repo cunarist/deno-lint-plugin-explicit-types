@@ -31,7 +31,7 @@ import { requireReturnType } from "./require-return-type.ts";
  *
  * Built from pairs rather than written as an object literal: a rule record is
  * a lookup keyed by rule id, so the ids belong in value position. This is
- * `camel-case-object-keys` applied to itself.
+ * `no-upper-snake-object-keys` applied to itself.
  */
 export const concreteRules: Deno.lint.Plugin["rules"] = Object.fromEntries([
   ["no-utility-types", noUtilityTypes],

@@ -86,15 +86,15 @@ enum Status {
 type Status = "PENDING" | "DONE";
 ```
 
-| Rule                                                                   | Catches                            |
-| ---------------------------------------------------------------------- | ---------------------------------- |
-| [`pascal-case-types`](src/naming/pascal-case-types.md)                 | A type name that isn't PascalCase  |
-| [`upper-snake-string-unions`](src/naming/upper-snake-string-unions.md) | `"pending"` where `"PENDING"` fits |
-| [`camel-case-object-keys`](src/naming/camel-case-object-keys.md)       | An object being used as a map      |
-| [`no-enum`](src/naming/no-enum.md)                                     | `enum`, including `const enum`     |
+| Rule                                                                     | Catches                            |
+| ------------------------------------------------------------------------ | ---------------------------------- |
+| [`pascal-case-types`](src/naming/pascal-case-types.md)                   | A type name that isn't PascalCase  |
+| [`upper-snake-string-unions`](src/naming/upper-snake-string-unions.md)   | `"pending"` where `"PENDING"` fits |
+| [`no-upper-snake-object-keys`](src/naming/no-upper-snake-object-keys.md) | A union used as object keys        |
+| [`no-enum`](src/naming/no-enum.md)                                       | `enum`, including `const enum`     |
 
 These interlock: `no-enum` removes the construct, `upper-snake-string-unions`
-governs the union that replaces it, and `camel-case-object-keys` keeps those
+governs the union that replaces it, and `no-upper-snake-object-keys` keeps those
 members out of object keys. So turning a `Status` into a value is a `switch`,
 not an object you index into — and a `switch` stops compiling the day someone
 adds a member.
@@ -124,9 +124,10 @@ leaves them alone rather than duplicating them.
   `Partial<T>` where it is written but not through a local alias.
 - **Syntax, not types.** `no-type-assertion` sees `x as T`, not an assertion
   laundered through a function signature.
-- **A lint visitor can't satisfy `camel-case-object-keys`.** Its keys are AST
-  node types and the API demands an object literal, so this package's rule files
-  carry a `deno-lint-ignore-file` for it. Nothing is excluded repo-wide.
+- **Names you didn't choose are left alone.** `no-upper-snake-object-keys` only
+  reports UPPER_SNAKE_CASE, so custom element tags, `data-*` attributes, HTTP
+  headers and library keymaps pass. Unquoted `snake_case` is Deno's built-in
+  `camelcase` rule's job.
 
 ## License
 

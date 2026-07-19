@@ -1,9 +1,4 @@
-// deno-lint-ignore-file explicit-naming/camel-case-object-keys -- a lint
-// visitor is a dispatch table keyed by AST node type; the API takes an
-// object, and building it from pairs would drop the typed `node` param.
-
-/**
- * `no-type-assertion` — whether a `TSAsExpression`'s annotation is the `const` of `as const`. */
+/** Whether a `TSAsExpression`'s annotation is the `const` of `as const`. */
 function isConstAssertion(node: Deno.lint.TSAsExpression): boolean {
   const annotation = node.typeAnnotation;
   if (annotation.type !== "TSTypeReference") return false;
@@ -11,7 +6,9 @@ function isConstAssertion(node: Deno.lint.TSAsExpression): boolean {
   return name.type === "Identifier" && name.name === "const";
 }
 
-/** Rejects type assertions — `value as T` and `<T>value`. `as const` is allowed.
+/**
+ * `no-type-assertion` — rejects type assertions, `value as T` and `<T>value`.
+ * `as const` is allowed.
  *
  * An assertion overrides the compiler rather than informing it. `as const` is
  * exempt: it narrows a literal to what is already written, it does not claim
