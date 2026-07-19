@@ -107,12 +107,10 @@ Mainstream: `pascal-case-types`, `no-enum`, `no-type-assertion`,
 `no-index-signatures`.
 
 Deliberately stronger than most TypeScript codebases: `no-utility-types`,
-`no-keyof`, `no-mapped-types`, `no-typeof-type`. Banning `Partial` means writing
-the derived shape out, which costs duplication — that trade is the point, but it
-is a real cost. Read the rule docs before adopting.
-
-House style: `upper-snake-string-unions`. Common for enum-like tokens (GraphQL,
-protobuf, action types), less so for option flags.
+`no-keyof`, `no-mapped-types`, `no-typeof-type`, `no-conditional-types`,
+`no-inline-object-types`. These push toward types that are declared rather than
+computed — closer to writing every struct out, as Go does. What you read is what
+the type is.
 
 ## Pairs well with
 

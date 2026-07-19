@@ -45,7 +45,7 @@ belongs in this file, not in chat.
 - **Every exported symbol needs JSDoc, and every entry point needs a `@module`
   block.** JSR scores the package on both. A rule file's leading comment is the
   _module_ doc, so the `export const` beneath it still needs its own one-liner.
-  `deno task doc-lint` is the check, and it runs in CI before publish.
+  `deno task doc-lint` is the check, and `deno task check` runs it.
 - `license` must be set in `deno.json` (or a LICENSE file present) or
   `deno publish` fails.
 
