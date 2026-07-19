@@ -1,0 +1,24 @@
+// deno-lint-ignore-file explicit-naming/camel-case-object-keys -- a lint
+// visitor is a dispatch table keyed by AST node type; the API takes an
+// object, and building it from pairs would drop the typed `node` param.
+
+/**
+ * `no-index-signatures` — rejects index signatures — `{ [key: string]: T }`.
+ *
+ * An index signature says every key is legal and every read succeeds. Typos
+ * type-check, and the object doubles as a dictionary that is not a `Map`.
+ */
+export const noIndexSignatures: Deno.lint.Rule = {
+  create(ctx) {
+    return {
+      TSIndexSignature(node) {
+        ctx.report({
+          node,
+          message: "Index signature.",
+          hint:
+            "Write concrete fields, or use a `Map` if the keys are genuinely dynamic.",
+        });
+      },
+    };
+  },
+};
