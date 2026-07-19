@@ -178,23 +178,24 @@ caught two bugs 313 unit tests missed.
 Status: `mem` = ported from memona's plugin, `std` = written in memona's
 `coding-standards.md` but never enforced, `new` = neither, added here.
 
-12 rules, two presets.
+13 rules, two presets.
 
 ### Preset: `concrete` — write the type out
 
 `restricted-types` was one mega-rule in memona; it is split here so each ban is
 individually nameable and disableable.
 
-| Rule                   | Src | Enforces                                                 |
-| ---------------------- | --- | -------------------------------------------------------- |
-| `no-utility-types`     | mem | No `Partial`/`Record`/`ReturnType`/… — 22 built-ins      |
-| `no-keyof`             | mem | No `keyof` in a type position                            |
-| `no-typeof-type`       | mem | No `typeof x` in a type position (`TSTypeQuery`)         |
-| `no-mapped-types`      | mem | No `{ [K in T]: … }`                                     |
-| `no-index-signatures`  | mem | No `{ [k: string]: … }` — use concrete fields or a `Map` |
-| `no-conditional-types` | new | No `T extends U ? A : B`, no `infer`                     |
-| `require-return-type`  | new | Named functions declare their return type                |
-| `no-type-assertion`    | std | No `x as T` / `<T>x`; `as const` is allowed              |
+| Rule                     | Src | Enforces                                                 |
+| ------------------------ | --- | -------------------------------------------------------- |
+| `no-utility-types`       | mem | No `Partial`/`Record`/`ReturnType`/… — 22 built-ins      |
+| `no-keyof`               | mem | No `keyof` in a type position                            |
+| `no-typeof-type`         | mem | No `typeof x` in a type position (`TSTypeQuery`)         |
+| `no-mapped-types`        | mem | No `{ [K in T]: … }`                                     |
+| `no-index-signatures`    | mem | No `{ [k: string]: … }` — use concrete fields or a `Map` |
+| `no-inline-object-types` | new | No unnamed object shape in a type position               |
+| `no-conditional-types`   | new | No `T extends U ? A : B`, no `infer`                     |
+| `require-return-type`    | new | Named functions declare their return type                |
+| `no-type-assertion`      | std | No `x as T` / `<T>x`; `as const` is allowed              |
 
 ### Preset: `naming` — names carry the contract
 

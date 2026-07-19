@@ -25,7 +25,7 @@ off by id:
 ```
 
 Or import the rules and build your own plugin, which gives you `concreteRules`,
-`namingRules`, and all 12 rules individually:
+`namingRules`, and all 13 rules individually:
 
 ```ts
 // lint.ts
@@ -58,16 +58,17 @@ interface Draft {
 }
 ```
 
-| Rule                                                           | Catches                                       |
-| -------------------------------------------------------------- | --------------------------------------------- |
-| [`no-utility-types`](src/concrete/no-utility-types.md)         | `Partial`, `Record`, `ReturnType`, 19 more    |
-| [`no-keyof`](src/concrete/no-keyof.md)                         | A union nobody wrote down                     |
-| [`no-typeof-type`](src/concrete/no-typeof-type.md)             | A type read backwards out of a value          |
-| [`no-mapped-types`](src/concrete/no-mapped-types.md)           | `{ [K in Keys]: T }`                          |
-| [`no-index-signatures`](src/concrete/no-index-signatures.md)   | `{ [key: string]: T }`, where every read lies |
-| [`no-conditional-types`](src/concrete/no-conditional-types.md) | `T extends U ? A : B`, and `infer`            |
-| [`require-return-type`](src/concrete/require-return-type.md)   | A function whose contract is in its body      |
-| [`no-type-assertion`](src/concrete/no-type-assertion.md)       | `x as T`, overruling the compiler             |
+| Rule                                                               | Catches                                       |
+| ------------------------------------------------------------------ | --------------------------------------------- |
+| [`no-utility-types`](src/concrete/no-utility-types.md)             | `Partial`, `Record`, `ReturnType`, 19 more    |
+| [`no-keyof`](src/concrete/no-keyof.md)                             | A union nobody wrote down                     |
+| [`no-typeof-type`](src/concrete/no-typeof-type.md)                 | A type read backwards out of a value          |
+| [`no-mapped-types`](src/concrete/no-mapped-types.md)               | `{ [K in Keys]: T }`                          |
+| [`no-index-signatures`](src/concrete/no-index-signatures.md)       | `{ [key: string]: T }`, where every read lies |
+| [`no-inline-object-types`](src/concrete/no-inline-object-types.md) | `{ a: string }` with no name                  |
+| [`no-conditional-types`](src/concrete/no-conditional-types.md)     | `T extends U ? A : B`, and `infer`            |
+| [`require-return-type`](src/concrete/require-return-type.md)       | A function whose contract is in its body      |
+| [`no-type-assertion`](src/concrete/no-type-assertion.md)           | `x as T`, overruling the compiler             |
 
 `as const` and `satisfies` are allowed — both narrow rather than overrule.
 Indexed access is too: `Options["retries"]` is how you name a type a library

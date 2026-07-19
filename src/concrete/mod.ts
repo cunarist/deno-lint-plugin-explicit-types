@@ -19,6 +19,7 @@
 
 import { noConditionalTypes } from "./no-conditional-types.ts";
 import { noIndexSignatures } from "./no-index-signatures.ts";
+import { noInlineObjectTypes } from "./no-inline-object-types.ts";
 import { noKeyof } from "./no-keyof.ts";
 import { noMappedTypes } from "./no-mapped-types.ts";
 import { noTypeAssertion } from "./no-type-assertion.ts";
@@ -39,6 +40,7 @@ export const concreteRules: Deno.lint.Plugin["rules"] = Object.fromEntries([
   ["no-typeof-type", noTypeofType],
   ["no-mapped-types", noMappedTypes],
   ["no-index-signatures", noIndexSignatures],
+  ["no-inline-object-types", noInlineObjectTypes],
   ["no-conditional-types", noConditionalTypes],
   ["require-return-type", requireReturnType],
   ["no-type-assertion", noTypeAssertion],
@@ -53,6 +55,7 @@ const plugin: Deno.lint.Plugin = {
 // Individual rules, re-exported for composition.
 export { noConditionalTypes } from "./no-conditional-types.ts";
 export { noIndexSignatures } from "./no-index-signatures.ts";
+export { noInlineObjectTypes } from "./no-inline-object-types.ts";
 export { noKeyof } from "./no-keyof.ts";
 export { noMappedTypes } from "./no-mapped-types.ts";
 export { noTypeAssertion } from "./no-type-assertion.ts";
