@@ -31,7 +31,7 @@ jobs:
         run: deno lint
 
       - name: Type check
-        run: deno check src/mod.ts
+        run: deno check src/concrete/mod.ts src/naming/mod.ts
 
       # Every exported symbol needs JSDoc; JSR scores the package on it.
       - name: Doc lint

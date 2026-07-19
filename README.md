@@ -24,15 +24,14 @@ off by id:
 { "lint": { "rules": { "exclude": ["explicit-concrete/no-type-assertion"] } } }
 ```
 
-Or import the rules and build your own plugin, which gives you `concreteRules`,
-`namingRules`, and all 13 rules individually:
+Or import the rules and build your own plugin. Each entry point exports its
+rules individually, plus `concreteRules` and `namingRules` for taking a whole
+set:
 
 ```ts
 // lint.ts
-import {
-  concreteRules,
-  noEnum,
-} from "jsr:@cunarist/deno-lint-plugin-explicit-types";
+import { concreteRules } from "jsr:@cunarist/deno-lint-plugin-explicit-types/concrete";
+import { noEnum } from "jsr:@cunarist/deno-lint-plugin-explicit-types/naming";
 
 const plugin: Deno.lint.Plugin = {
   name: "my-types",
@@ -41,6 +40,8 @@ const plugin: Deno.lint.Plugin = {
 
 export default plugin;
 ```
+
+Your diagnostics then read `my-types/no-enum`.
 
 ## `/concrete` — write the type out
 

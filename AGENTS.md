@@ -65,9 +65,22 @@ plugin.
 
 Tests keep `snake_case`, matching the `_test.ts` suffix Deno expects.
 
-`src/mod.ts` re-exports everything for people composing their own plugin. The
-layout otherwise mirrors `../deno-lint-plugin-lit`; keep the two in step, with
-this file naming as the one deliberate divergence — that repo still uses
+**There is no root entry point, and each rule is exported from exactly one
+place** — its own preset `mod.ts`. That is not cosmetic. JSR's "documented
+symbols" score analyses every entry point together, and a symbol reachable from
+two of them gets counted twice: once at its declaration, which carries the
+JSDoc, and once at the re-export, which does not. A `src/mod.ts` doing
+`export * from "#concrete"` alone dropped the score to 59% with every symbol
+documented. Reproduce the count with:
+
+    deno doc --json src/concrete/mod.ts src/naming/mod.ts
+
+and look at `symbols[].declarations[].jsDoc`. Note that `deno doc --lint` passes
+throughout — it only ever inspects the original declaration, so it cannot see
+this.
+
+The layout otherwise mirrors `../deno-lint-plugin-lit`; keep the two in step,
+with this file naming as the one deliberate divergence — that repo still uses
 `snake_case` under `src/`.
 
 **Entry points point straight at the preset `mod.ts`**, with no intermediate
@@ -93,11 +106,13 @@ loading a plugin turns on everything in it, opt-out only.
 So ESLint-style configs are impossible inside one plugin. Each preset is its own
 entry point with its own plugin name, and users list the ones they want:
 
-| Entry        | Plugin name         | Rule ids                 |
-| ------------ | ------------------- | ------------------------ |
-| `.`          | _(not a plugin)_    | composition surface only |
-| `./concrete` | `explicit-concrete` | `explicit-concrete/…`    |
-| `./naming`   | `explicit-naming`   | `explicit-naming/…`      |
+| Entry        | Plugin name         | Rule ids              |
+| ------------ | ------------------- | --------------------- |
+| `./concrete` | `explicit-concrete` | `explicit-concrete/…` |
+| `./naming`   | `explicit-naming`   | `explicit-naming/…`   |
+
+Each also exports its rules individually and its rule record (`concreteRules`,
+`namingRules`) for composing a plugin by hand.
 
 ```jsonc
 {
