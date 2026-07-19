@@ -13,7 +13,7 @@ wins on any conflict.
 infer it, that is convenience; if the _reader_ has to run the compiler in their
 head to know what a value is, that is a defect. Every rule here removes one way
 to leave a type implicit — utility types, `keyof`, `typeof`, mapped types, index
-signatures, and assertions.
+signatures, conditional types, and assertions.
 
 ---
 
@@ -183,21 +183,23 @@ caught two bugs 313 unit tests missed.
 Status: `mem` = ported from memona's plugin, `std` = written in memona's
 `coding-standards.md` but never enforced, `new` = neither, added here.
 
-10 rules, two presets.
+12 rules, two presets.
 
 ### Preset: `concrete` — write the type out
 
 `restricted-types` was one mega-rule in memona; it is split here so each ban is
 individually nameable and disableable.
 
-| Rule                  | Src | Enforces                                                 |
-| --------------------- | --- | -------------------------------------------------------- |
-| `no-utility-types`    | mem | No `Partial`/`Record`/`ReturnType`/… — 22 built-ins      |
-| `no-keyof`            | mem | No `keyof` in a type position                            |
-| `no-typeof-type`      | mem | No `typeof x` in a type position (`TSTypeQuery`)         |
-| `no-mapped-types`     | mem | No `{ [K in T]: … }`                                     |
-| `no-index-signatures` | mem | No `{ [k: string]: … }` — use concrete fields or a `Map` |
-| `no-type-assertion`   | std | No `x as T` / `<T>x`; `as const` is allowed              |
+| Rule                   | Src | Enforces                                                 |
+| ---------------------- | --- | -------------------------------------------------------- |
+| `no-utility-types`     | mem | No `Partial`/`Record`/`ReturnType`/… — 22 built-ins      |
+| `no-keyof`             | mem | No `keyof` in a type position                            |
+| `no-typeof-type`       | mem | No `typeof x` in a type position (`TSTypeQuery`)         |
+| `no-mapped-types`      | mem | No `{ [K in T]: … }`                                     |
+| `no-index-signatures`  | mem | No `{ [k: string]: … }` — use concrete fields or a `Map` |
+| `no-conditional-types` | new | No `T extends U ? A : B`, no `infer`                     |
+| `require-return-type`  | new | Named functions declare their return type                |
+| `no-type-assertion`    | std | No `x as T` / `<T>x`; `as const` is allowed              |
 
 ### Preset: `naming` — names carry the contract
 
@@ -270,6 +272,28 @@ was not written — it would close the only door out of someone else's types.
 recommends `no-explicit-any` left no way to annotate a caught error — and
 `unknown` is the safer of the two, since `any` disables checking and spreads to
 everything it touches.
+
+## Ways of being implicit that are left alone
+
+Checked against a real `deno lint` run; each is a decision, not an oversight.
+
+- **Template literal types** — `` type Path = `FILE_${Token}` ``. Same defect as
+  a mapped type: the reader has to expand it. Left out because it shows up
+  almost entirely in library `.d.ts` files rather than app code, and the common
+  `` `on${Capitalize<K>}` `` form already trips `no-utility-types`.
+- **An exported const with no annotation** — `export const d = { retries: 3 }`.
+  Note that Deno's `no-slow-types` does **not** cover this: verified that it
+  needs `name`/`exports` in `deno.json` to run at all, and even then it reports
+  only missing return types, not object literals. So this really is uncovered —
+  it is skipped for noise, not because something else catches it.
+- **A class field with no annotation** — `class E { retries = 3 }`. Rust, the
+  usual comparison, does require struct field types; it infers _local
+  variables_. But a field initialiser is normally one obvious line, so the "read
+  the whole body" argument behind `require-return-type` does not carry over.
+
+Confirmed closed, for the record: angle-bracket assertions, `typeof import(…)`,
+and the `as const` object used as a fake enum (`typeof F[keyof typeof F]` trips
+`no-typeof-type` and `no-keyof`).
 
 ## Deliberately excluded
 
