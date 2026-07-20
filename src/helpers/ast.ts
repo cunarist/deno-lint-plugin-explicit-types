@@ -48,6 +48,15 @@ export function typeNameTail(node: TypeNameNode): string | null {
   return segments[segments.length - 1] ?? null;
 }
 
+/**
+ * The written form of an object or type member key, or `null` when it cannot
+ * be read from syntax alone — a computed key such as `[token]`.
+ */
+export function keyText(key: Deno.lint.Node): string | null {
+  if (key.type === "Identifier") return key.name;
+  return literalString(key);
+}
+
 /** The string value of a literal node, or `null` if it is not a string. */
 export function literalString(node: Deno.lint.Node): string | null {
   if (node.type !== "Literal") return null;
@@ -56,7 +65,7 @@ export function literalString(node: Deno.lint.Node): string | null {
 
 /** Name of an identifier that may be absent, e.g. an anonymous class's `id`. */
 export function identifierName(
-  node: Deno.lint.Identifier | null | undefined,
+  node: Deno.lint.Identifier | null,
 ): string | null {
   return node ? node.name : null;
 }

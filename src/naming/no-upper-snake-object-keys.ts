@@ -1,13 +1,7 @@
-import { literalString } from "#helpers";
+import { keyText } from "#helpers";
 
 /** `OPEN`, `IN_PROGRESS`, `HTTP2_PUSH` — the casing a string union member has. */
 const UPPER_SNAKE_CASE_PATTERN = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
-
-/** The written form of a key, or `null` if it cannot be read statically. */
-function keyText(key: Deno.lint.Node): string | null {
-  if (key.type === "Identifier") return key.name;
-  return literalString(key);
-}
 
 /**
  * `no-upper-snake-object-keys` — rejects UPPER_SNAKE_CASE object keys and type

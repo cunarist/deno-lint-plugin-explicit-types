@@ -11,22 +11,23 @@ derived.
   "lint": {
     "plugins": [
       "jsr:@cunarist/deno-lint-plugin-explicit-types/concrete",
-      "jsr:@cunarist/deno-lint-plugin-explicit-types/naming"
+      "jsr:@cunarist/deno-lint-plugin-explicit-types/naming",
+      "jsr:@cunarist/deno-lint-plugin-explicit-types/absence"
     ]
   }
 }
 ```
 
-Two plugins, added separately. Adding one turns on every rule in it, so turn one
-off by id:
+Three plugins, added separately. Adding one turns on every rule in it, so turn
+one off by id:
 
 ```jsonc
 { "lint": { "rules": { "exclude": ["explicit-concrete/no-type-assertion"] } } }
 ```
 
 Or import the rules and build your own plugin. Each entry point exports its
-rules individually, plus `concreteRules` and `namingRules` for taking a whole
-set:
+rules individually, plus `concreteRules`, `namingRules`, and `absenceRules` for
+taking a whole set:
 
 ```ts
 // lint.ts
@@ -101,6 +102,49 @@ members out of object keys. So turning a `Status` into a value is a `switch`,
 not an object you index into — and a `switch` stops compiling the day someone
 adds a member.
 
+## `/absence` — absence is authored
+
+`undefined` is what the language hands back when nobody said anything. `null` is
+what somebody wrote. Spell absence one way, at the boundary.
+
+```ts
+// BAD - every reader has to ask whether apiKey was ever set
+interface StoredSettings {
+  apiKey?: string;
+  zoomLevel?: number;
+}
+
+// GOOD
+interface StoredSettings {
+  apiKey: string | null;
+  zoomLevel: number | null;
+}
+```
+
+| Rule                                                    | Catches                                |
+| ------------------------------------------------------- | -------------------------------------- |
+| [`no-undefined-type`](src/absence/no-undefined-type.md) | The `undefined` keyword in any type    |
+| [`no-optional-null`](src/absence/no-optional-null.md)   | `a?: T \| null`, two ways to say empty |
+
+`?` is the undefined type, so there is no reason to write the keyword as well.
+And a value that can be empty in two ways has no definite empty value. A member
+or parameter says absence with `?`; a return type or variable, which cannot take
+`?`, says it with `| null`; nothing says it twice:
+
+```ts
+interface Job {
+  cursor?: string;
+} // GOOD
+function render(host?: Element): void {} // GOOD
+function findNote(id: string): Note | null {} // GOOD
+
+function open(path?: string | null): void {} // BAD - pick one
+function open(path?: string | undefined): void {} // BAD - `?` already said it
+```
+
+One caveat before adopting: a key missing from JSON is `undefined` at runtime,
+not `null`, so returning `| null` means normalising where you parse data.
+
 ## How opinionated is this?
 
 Mainstream: `pascal-case-types`, `no-enum`, `no-type-assertion`,
@@ -111,6 +155,9 @@ Deliberately stronger than most TypeScript codebases: `no-utility-types`,
 `no-inline-object-types`. These push toward types that are declared rather than
 computed — closer to writing every struct out, as Go does. What you read is what
 the type is.
+
+Strongest of all: `/absence`. It is the only preset that changes runtime code
+rather than annotations.
 
 ## Pairs well with
 

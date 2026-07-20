@@ -11,9 +11,13 @@ wins on any conflict.
 
 **The through-line:** a type is written out, not derived. If the compiler can
 infer it, that is convenience; if the _reader_ has to run the compiler in their
-head to know what a value is, that is a defect. Every rule here removes one way
-to leave a type implicit — utility types, `keyof`, `typeof`, mapped types, index
-signatures, conditional types, and assertions.
+head to know what a value is, that is a defect. The `concrete` and `naming`
+rules each remove one way to leave a type implicit — utility types, `keyof`,
+`typeof`, mapped types, index signatures, conditional types, and assertions.
+
+`absence` is the exception, added later on a second axis: one spelling per idea,
+so a value's empty form is a single definite thing. See that preset's section
+before adding a rule to it — the through-line is the wrong test there.
 
 ---
 
@@ -29,15 +33,15 @@ belongs in this file, not in chat.
 - `deno fmt`, `deno check`, and `deno lint` must all pass on this package
   itself.
 - **This package lints itself with its own rules, with nothing excluded
-  repo-wide.** `deno.json` loads `./src/concrete/mod.ts` and
-  `./src/naming/mod.ts` as lint plugins, so a new rule immediately applies to
-  the source that implements it. When a rule fires here, fix the source.
+  repo-wide.** `deno.json` loads `./src/concrete/mod.ts`, `./src/naming/mod.ts`,
+  and `./src/absence/mod.ts` as lint plugins, so a new rule immediately applies
+  to the source that implements it. When a rule fires here, fix the source.
 - **No file in this repo carries a `deno-lint-ignore`.** Rule records
-  (`concreteRules`, `namingRules`) are built with `Object.fromEntries` from
-  `[id, rule]` pairs, because a rule record really is a lookup keyed by rule id,
-  so the ids belong in value position. Lint visitors keep their object literal
-  and now pass on their own, since their keys are AST node names in PascalCase
-  rather than UPPER_SNAKE_CASE.
+  (`concreteRules`, `namingRules`, `absenceRules`) are built with
+  `Object.fromEntries` from `[id, rule]` pairs, because a rule record really is
+  a lookup keyed by rule id, so the ids belong in value position. Lint visitors
+  keep their object literal and now pass on their own, since their keys are AST
+  node names in PascalCase rather than UPPER_SNAKE_CASE.
 - Every rule has tests. Use `Deno.lint.runPlugin`, which is only available under
   `deno test`.
 - Annotate the plugin as `Deno.lint.Plugin` — visitor callback params infer from
@@ -73,7 +77,7 @@ JSDoc, and once at the re-export, which does not. A `src/mod.ts` doing
 `export * from "#concrete"` alone dropped the score to 59% with every symbol
 documented. Reproduce the count with:
 
-    deno doc --json src/concrete/mod.ts src/naming/mod.ts
+    deno doc --json src/concrete/mod.ts src/naming/mod.ts src/absence/mod.ts
 
 and look at `symbols[].declarations[].jsDoc`. Note that `deno doc --lint` passes
 throughout — it only ever inspects the original declaration, so it cannot see
@@ -96,7 +100,7 @@ The alias is declared in `deno.json` `imports` and resolves to
 `src/helpers/mod.ts`, a barrel over the individual helper modules. Relative
 `../../helpers/ast.ts` paths break the moment a file moves.
 
-### Packaging: why there are two entry points
+### Packaging: why there are three entry points
 
 Deno's plugin API is `{ name, rules }` — **no tags, no presets, and no per-rule
 options** (`RuleContext` has no `options`). `deno.json` `rules.exclude` _does_
@@ -110,16 +114,18 @@ entry point with its own plugin name, and users list the ones they want:
 | ------------ | ------------------- | --------------------- |
 | `./concrete` | `explicit-concrete` | `explicit-concrete/…` |
 | `./naming`   | `explicit-naming`   | `explicit-naming/…`   |
+| `./absence`  | `explicit-absence`  | `explicit-absence/…`  |
 
 Each also exports its rules individually and its rule record (`concreteRules`,
-`namingRules`) for composing a plugin by hand.
+`namingRules`, `absenceRules`) for composing a plugin by hand.
 
 ```jsonc
 {
   "lint": {
     "plugins": [
       "jsr:@cunarist/deno-lint-plugin-explicit-types/concrete",
-      "jsr:@cunarist/deno-lint-plugin-explicit-types/naming"
+      "jsr:@cunarist/deno-lint-plugin-explicit-types/naming",
+      "jsr:@cunarist/deno-lint-plugin-explicit-types/absence"
     ],
     "rules": { "exclude": ["explicit-concrete/no-type-assertion"] }
   }
@@ -166,6 +172,22 @@ Checked empirically against Deno 2.9.3 — do not re-litigate:
 - `Property` covers destructuring as well as object literals. Check
   `node.parent.type === "ObjectExpression"` to tell a declared key from a bound
   name.
+- `AccessorProperty` is a dead end for anything type-related. Its `optional` is
+  **declared but never populated** (`accessor g?: string` reports `false`, the
+  same trap as `TSParameterProperty.accessibility`), it is **not a member of the
+  `Deno.lint.Node` union** so `getText(node)` will not type-check on it, it
+  carries **no `typeAnnotation` field at runtime**, and the walker **never
+  descends into its type annotation** — a visitor on `TSUndefinedKeyword` or
+  `TSNullKeyword` simply never fires there. Only the source text is reachable:
+  `getText()` with no argument returns the whole file, which slices by absolute
+  range. `PropertyDefinition.optional`, `TSPropertySignature.optional`, and
+  `TSMethodSignature.optional` are all correct by contrast.
+- Getters and setters cannot carry the optional marker — `get g?()` is a syntax
+  error, in a class and in an interface alike.
+- A parameter binding's `parent` can be `TSParameterProperty` at runtime, but
+  the typings do not admit it. Compare such parent types through a
+  `readonly string[]` rather than a literal union, or the comparison is a
+  compile error rather than a false negative.
 - `TSTypeReference["typeName"]` is
   `Identifier | ThisExpression |
   TSQualifiedName`. There is no
@@ -193,7 +215,7 @@ caught two bugs 313 unit tests missed.
 Status: `mem` = ported from memona's plugin, `std` = written in memona's
 `coding-standards.md` but never enforced, `new` = neither, added here.
 
-13 rules, two presets.
+15 rules, three presets.
 
 ### Preset: `concrete` — write the type out
 
@@ -246,6 +268,92 @@ built-in waves through, and leaves quoted foreign names alone.
 `TSTypeAliasDeclaration`, so a union written inline on an interface member
 (`type: "Directory" | "File"`) is held to the same casing as an aliased one.
 Checking only aliases left that entire shape unguarded.
+
+### Preset: `absence` — absence is authored
+
+| Rule                | Src | Enforces                                    |
+| ------------------- | --- | ------------------------------------------- |
+| `no-undefined-type` | new | No `undefined` keyword in any type position |
+| `no-optional-null`  | new | No binding that is both `?` and `\| null`   |
+
+**This preset sits on a different axis from the other two, and should not be
+judged by the through-line.** `concrete` and `naming` remove ways for a type to
+be derived rather than written. These two do not: `a: T | undefined` is fully
+written out, and `a?: T` — the form the rules require — hides the `undefined` in
+a marker. The axis here is one spelling per idea:
+
+- `?` **is** the undefined type, so writing the keyword as well is the same
+  thing twice, and writing it instead is the long way round.
+- A value that can be empty two ways has no definite empty value. The reader
+  cannot tell which arrives and the body handles both.
+
+Supersedes `no-undefined-return` from the dropped `disciplined` preset, which
+covered only return types.
+
+**One spelling per position, and never two at once.** A member or parameter says
+absence with `?`; a return type or variable says it with `| null`:
+
+|             | `?`                  | `\| undefined`    | `\| null` | `?` + `\| null`  |
+| ----------- | -------------------- | ----------------- | --------- | ---------------- |
+| parameter   | yes                  | no-undefined-type | yes       | no-optional-null |
+| member      | yes                  | no-undefined-type | yes       | no-optional-null |
+| return, var | not legal TypeScript | no-undefined-type | yes       | not legal        |
+
+`?` is legal in exactly two places — `let v?: T` is a syntax error, and
+`get g?()` is too — so parameters and members are the whole surface for
+`no-optional-null`. A default value is not the `?` marker, so
+`f(a: string | null = null)` stays clean.
+
+**`no-optional-members` was built and then dropped.** It banned `?` on members
+outright, forcing `T | null`, on the argument that an optional field can be left
+out so adding one compiles silently at every construction site while `| null`
+makes it an error there. That is a real property, and the uniform object shape
+it produces is what lets an engine hold one hidden class per object. It was cut
+because `?` is shorter and reads better, and because forcing `| null` onto
+members demands a normalising layer wherever JSON is parsed — a missing key is
+`undefined` at runtime, so the declared type is otherwise false. Wanting it back
+means writing it again; it was one `TSPropertySignature`/`TSMethodSignature`/
+`PropertyDefinition` visitor on `.optional`, plus a source-text read for
+`AccessorProperty`.
+
+Earlier drafts exempted parameters from `no-undefined-type`, on the grounds that
+a callback's shape is fixed by a library. That exemption turned out to be
+unnecessary: `?` already satisfies those signatures — a Lit `ref` handler is
+`(el?: Element) => void` — so the keyword can be banned outright and `?` is the
+replacement. Checked against `../memona`, where `?:` appears 312 times across 70
+files: every one is a member or a callback parameter, and all of them stay
+legal.
+
+The one case with no `?` form is a required parameter that must accept absence
+in a non-trailing position, since `f(a?: number, b: string)` does not compile.
+`| null` covers it.
+
+Removing the exemption made the rule a bare `TSUndefinedKeyword` visitor, and it
+immediately fired on this repo's own `identifierName` helper. The fix is the
+rule's own prescription, and the second step came from `no-optional-null`:
+`node: Identifier | null | undefined` → `node?: Identifier | null` →
+`node: Identifier | null`.
+
+**Neither rule can see an `accessor` field's type, and that was left alone on
+purpose.** Deno's lint AST never walks an `AccessorProperty` type annotation,
+and the node has no `typeAnnotation` at runtime either — verified against 2.9.3
+by reading `sourceCode.ast` directly, so it is a hard limit rather than a
+typings gap. `accessor a: string | undefined` and `accessor a?: string | null`
+both pass.
+
+A source-text scanner was written to close it and then deleted. The numbers from
+`../memona`, which uses `accessor` 224 times across 35 files:
+
+- `accessor x?:` — **zero occurrences**. Lit fields carry an initialiser, so the
+  `?` marker never appears on one and `no-optional-null` would gain nothing.
+- `accessor x: T | undefined` — a handful, e.g. `checked: boolean | undefined`.
+  These are real misses for `no-undefined-type`.
+
+So the gain was a few sites on one rule, against ~90 lines of hand-rolled
+tokenizing — bracket depth, quoted spans, cutting at the initialiser's `=` — in
+a package where every other rule reads the tree. Text matching would misread a
+string-literal type containing `null` and a generic default, and a false
+positive costs more than this miss. Both rule docs record the gap.
 
 ## Where the through-line stops
 
@@ -326,7 +434,10 @@ and the `as const` object used as a fake enum (`typeof F[keyof typeof F]` trips
   they survive in no branch and no clone. Wanting them back means writing them
   again from memona's `restricted-types` and `coding-standards.md`. The rule
   names above are the whole inventory; the non-obvious parts of the work are
-  kept as environment facts below.
+  kept as environment facts below. One of the seven has since come back in a
+  wider form: `no-undefined-return` is superseded by the `absence` preset's
+  `no-undefined-type`, which covers every type position rather than only
+  returns.
 - `no-unknown` — dropped after it shipped; see above.
 - `no-satisfies` — also dropped after it shipped. It was banned for leaving the
   declaration's own type inferred, and the doc claimed an annotation plus

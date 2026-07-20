@@ -5,17 +5,19 @@
   "description": "Deno lint rules that keep TypeScript types written out rather than derived, and names carrying their contract.",
   "exports": {
     "./concrete": "./src/concrete/mod.ts",
-    "./naming": "./src/naming/mod.ts"
+    "./naming": "./src/naming/mod.ts",
+    "./absence": "./src/absence/mod.ts"
   },
   "imports": {
     "#concrete": "./src/concrete/mod.ts",
     "#naming": "./src/naming/mod.ts",
+    "#absence": "./src/absence/mod.ts",
     "#helpers": "./src/helpers/mod.ts",
     "@std/assert": "jsr:@std/assert@^1.0.0"
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check && deno task doc-lint && deno test",
-    "doc-lint": "deno doc --lint src/concrete/mod.ts src/naming/mod.ts",
+    "doc-lint": "deno doc --lint src/concrete/mod.ts src/naming/mod.ts src/absence/mod.ts",
     "fix": "deno fmt && deno lint --fix"
   },
   "compilerOptions": {
@@ -32,6 +34,7 @@
     "plugins": [
       "./src/concrete/mod.ts",
       "./src/naming/mod.ts",
+      "./src/absence/mod.ts",
       "jsr:@cunarist/deno-import-check@0.7.0/lint"
     ],
     "rules": {
