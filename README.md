@@ -105,18 +105,20 @@ adds a member.
 ## `/absence` — absence is authored
 
 `undefined` is what the language hands back when nobody said anything. `null` is
-what somebody wrote. Spell absence one way, at the boundary.
+what somebody wrote. Give absence one spelling per position, and never two at
+once. `?` is a good spelling — these rules keep it, they just stop it doubling
+up with the `undefined` keyword or with `| null`.
 
 ```ts
-// BAD - every reader has to ask whether apiKey was ever set
+// BAD
 interface StoredSettings {
-  apiKey?: string;
-  zoomLevel?: number;
+  apiKey?: string | null; // no-optional-null - two ways to be empty
+  zoomLevel: number | undefined; // no-undefined-type
 }
 
-// GOOD
+// GOOD - `?` on a member, `| null` where `?` cannot go
 interface StoredSettings {
-  apiKey: string | null;
+  apiKey?: string;
   zoomLevel: number | null;
 }
 ```
