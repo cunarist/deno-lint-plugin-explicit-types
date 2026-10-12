@@ -1,6 +1,9 @@
-# deno-lint-plugin-explicit-types
+# oxlint-plugin-explicit-types
 
-A Deno lint plugin for TypeScript style, published to jsr.io. Sibling of
+An Oxlint JS plugin for TypeScript style, published to npm as
+`@cunarist/oxlint-plugin-explicit-types`. Ported from the Deno lint plugin of
+the same rules (`jsr:@cunarist/deno-lint-plugin-explicit-types`, last at 0.5.1);
+rule names, behaviour, and messages carry over. Sibling of
 `../deno-lint-plugin-lit`; this is the home for the general-TS rules that plugin
 deliberately excluded as out of scope.
 
@@ -29,184 +32,146 @@ belongs in this file, not in chat.
 
 ## Project conventions
 
-- `deno.json` is the only config. Strict TS.
-- `deno fmt`, `deno check`, and `deno lint` must all pass on this package
-  itself.
+- Node.js 24+ and Vite+ (`vp`). The only config files are `package.json`,
+  `tsconfig.json`, and `vite.config.ts`, plus `package-lock.json`. Only `.ts`
+  files, configs included; build output in the ignored `dist/` is the exception.
+- `vp check` (format, lint, type check), `vp test`, and `vp pack` must all pass.
+  `vp check --fix` formats.
 - **This package lints itself with its own rules, with nothing excluded
-  repo-wide.** `deno.json` loads `./src/concrete/mod.ts`, `./src/naming/mod.ts`,
-  and `./src/absence/mod.ts` as lint plugins, so a new rule immediately applies
-  to the source that implements it. When a rule fires here, fix the source.
-- **No file in this repo carries a `deno-lint-ignore`.** Rule records
+  repo-wide.** `vite.config.ts` loads `./src/<preset>/index.ts` straight from
+  source as `jsPlugins` — Oxlint strips the types itself on Node 24 — and spreads
+  each preset's `…Config.rules`, so a new rule immediately applies to the source
+  that implements it. When a rule fires here, fix the source.
+- **No file in this repo carries an `oxlint-disable`.** Rule records
   (`concreteRules`, `namingRules`, `absenceRules`) are built with
   `Object.fromEntries` from `[id, rule]` pairs, because a rule record really is
   a lookup keyed by rule id, so the ids belong in value position. Lint visitors
-  keep their object literal and now pass on their own, since their keys are AST
-  node names in PascalCase rather than UPPER_SNAKE_CASE.
-- Every rule has tests. Use `Deno.lint.runPlugin`, which is only available under
-  `deno test`.
-- Annotate the plugin as `Deno.lint.Plugin` — visitor callback params infer from
-  it, and JSR's slow-types check needs the explicit public type.
-- **Every exported symbol needs JSDoc, and every entry point needs a `@module`
-  block.** JSR scores the package on both. A rule file's leading comment is the
-  _module_ doc, so the `export const` beneath it still needs its own one-liner.
-  `deno task doc-lint` is the check, and `deno task check` runs it.
-- `license` must be set in `deno.json` (or a LICENSE file present) or
-  `deno publish` fails.
+  keep their object literal and pass on their own, since their keys are AST node
+  names in PascalCase rather than UPPER_SNAKE_CASE. `meta.messages` keys are
+  camelCase message ids.
+- Every rule has tests, run through Oxlint's `RuleTester` in Vitest.
+- Rules use Oxlint's `createOnce` API and each preset wraps its plugin in
+  `eslintCompatPlugin`, which adds an ESLint `create`. Type a rule as `Rule` and
+  a record as `Plugin["rules"]`, both from `@oxlint/plugins`; visitor callback
+  params infer from it.
+- Rule messages are one string: Deno's `message` and `hint` joined. Oxlint and
+  ESLint diagnostics have no separate hint field. Report with `messageId` and
+  `data`, so tests can assert which message fired.
+- **Every exported declaration has an explicit type.** `isolatedDeclarations` is
+  on, so `vp pack` emits `.d.ts` through Oxc without a `typescript` install, and
+  a missing annotation is a type error.
 
 ### File layout
 
 **Everything under `src/` is named in kebab-case**, so a file name is the rule
 id it implements — `no-utility-types` is in `no-utility-types.ts`, documented in
-`no-utility-types.md`, and no translation step sits between the diagnostic a
-user sees and the file they open. Rules live under `src/<preset>/`, and each
-preset directory has a `mod.ts` that is both the rule record and the published
-plugin.
+`no-utility-types.md`, tested in `no-utility-types.test.ts`, and no translation
+step sits between the diagnostic a user sees and the file they open.
 
     src/concrete/no-utility-types.ts
     src/concrete/no-utility-types.md
-    src/concrete/mod.ts
-    tests/no_utility_types_test.ts
+    src/concrete/no-utility-types.test.ts
+    src/concrete/index.ts
 
-Tests keep `snake_case`, matching the `_test.ts` suffix Deno expects.
+Each preset directory has an `index.ts` that is both the rule record and the
+published plugin. Tests sit beside the rule: the package publishes only `dist/`,
+so colocation costs nothing in the tarball, and Vitest's default include finds
+`*.test.ts` without config.
 
-**There is no root entry point, and each rule is exported from exactly one
-place** — its own preset `mod.ts`. That is not cosmetic. JSR's "documented
-symbols" score analyses every entry point together, and a symbol reachable from
-two of them gets counted twice: once at its declaration, which carries the
-JSDoc, and once at the re-export, which does not. A `src/mod.ts` doing
-`export * from "#concrete"` alone dropped the score to 59% with every symbol
-documented. Reproduce the count with:
+**Each rule is exported from exactly one entry** — its preset's `index.ts`.
+There is no root entry: the three presets are separate plugins with separate
+names.
 
-    deno doc --json src/concrete/mod.ts src/naming/mod.ts src/absence/mod.ts
-
-and look at `symbols[].declarations[].jsDoc`. Note that `deno doc --lint` passes
-throughout — it only ever inspects the original declaration, so it cannot see
-this.
-
-The layout otherwise mirrors `../deno-lint-plugin-lit`; keep the two in step,
-with this file naming as the one deliberate divergence — that repo still uses
-`snake_case` under `src/`.
-
-**Entry points point straight at the preset `mod.ts`**, with no intermediate
-re-export file to drift out of sync with `deno.json`.
-
-**Rules import helpers through the `#helpers` alias**, never a relative path:
+**Rules import shared code through `#` subpath imports**, never a relative path
+out of their own directory:
 
 ```ts
 import { typeNameTail } from "#helpers";
+import { spanOf, testRule } from "#testing";
 ```
 
-The alias is declared in `deno.json` `imports` and resolves to
-`src/helpers/mod.ts`, a barrel over the individual helper modules. Relative
-`../../helpers/ast.ts` paths break the moment a file moves.
+The aliases are `package.json` `imports`, which Node, TypeScript, Vite, and
+Oxlint's plugin loader all resolve natively, so the source runs unbuilt. They
+point at `.ts` files and never reach consumers: `vp pack` inlines them.
+`#testing` is kept apart from `#helpers` so the tester never lands in a bundle.
 
 ### Packaging: why there are three entry points
 
-Deno's plugin API is `{ name, rules }` — **no tags, no presets, and no per-rule
-options** (`RuleContext` has no `options`). `deno.json` `rules.exclude` _does_
-turn off a plugin rule, but `rules.include` does **not** restrict plugin rules —
-loading a plugin turns on everything in it, opt-out only.
+Oxlint's plugin is `{ meta: { name }, rules }` — the `Plugin` type has **no
+`configs`**, and loading a plugin through `jsPlugins` turns **no** rule on; each
+must be listed under `rules`. A preset is therefore an Oxlint config to
+`extends`, not a plugin field.
 
-So ESLint-style configs are impossible inside one plugin. Each preset is its own
-entry point with its own plugin name, and users list the ones they want:
+Each preset stays its own entry point with its own plugin name, so the rule ids
+are exactly the Deno ones:
 
-| Entry        | Plugin name         | Rule ids              |
-| ------------ | ------------------- | --------------------- |
-| `./concrete` | `explicit-concrete` | `explicit-concrete/…` |
-| `./naming`   | `explicit-naming`   | `explicit-naming/…`   |
-| `./absence`  | `explicit-absence`  | `explicit-absence/…`  |
+| Entry        | Plugin name         | Rule ids              | Config           |
+| ------------ | ------------------- | --------------------- | ---------------- |
+| `./concrete` | `explicit-concrete` | `explicit-concrete/…` | `concreteConfig` |
+| `./naming`   | `explicit-naming`   | `explicit-naming/…`   | `namingConfig`   |
+| `./absence`  | `explicit-absence`  | `explicit-absence/…`  | `absenceConfig`  |
 
-Each also exports its rules individually and its rule record (`concreteRules`,
-`namingRules`, `absenceRules`) for composing a plugin by hand.
+A `…Config` is `{ jsPlugins: ["@cunarist/oxlint-plugin-explicit-types/<preset>"],
+rules: { "<plugin>/<rule>": "error", … } }`, built by `presetConfig`. It names the
+plugin by package specifier because **Oxlint rejects relative plugin specifiers
+inside `extends`**. That is also why this repo's own `vite.config.ts` lists
+`./src/…` under `jsPlugins` and spreads only `.rules`.
 
-```jsonc
-{
-  "lint": {
-    "plugins": [
-      "jsr:@cunarist/deno-lint-plugin-explicit-types/concrete",
-      "jsr:@cunarist/deno-lint-plugin-explicit-types/naming",
-      "jsr:@cunarist/deno-lint-plugin-explicit-types/absence"
-    ],
-    "rules": { "exclude": ["explicit-concrete/no-type-assertion"] }
-  }
-}
-```
+The config is typed `OxlintConfig` from `oxlint`, declared as an optional peer
+dependency. Without that declaration tsdown inlines Oxlint's whole config type
+into `dist/` (about 250 kB of `.d.ts`).
 
-**Consequence — no rule takes settings.** Where memona hardcoded a project
-denylist (the `EventTarget` ban in `restricted-types`), the rule is dropped
-rather than shipped unconfigurable.
+**No rule takes settings.** Oxlint does support rule options, but none of these
+rules has needed one. Where memona hardcoded a project denylist (the
+`EventTarget` ban in `restricted-types`), the rule is dropped rather than
+shipped as an option.
 
 ### Verified environment facts
 
-Checked empirically against Deno 2.9.3 — do not re-litigate:
+Checked empirically against Oxlint 1.87 (Vite+ 1.1.0):
 
-- AST node fields are **prototype getters**. `Object.keys(node)` returns `[]`.
-  Never traverse with `Object.keys`/`Object.values` — use explicit field access.
-- Top-level `export class X` arrives as an `ExportNamedDeclaration` wrapper —
-  unwrap before matching `ClassDeclaration`.
-- String literals are node type **`Literal`** with a `.value`, not
-  `StringLiteral` — despite `StringLiteral` appearing in some key-position
-  unions.
-- `ClassDeclaration` has **no `decorators` field in the typings**, though it
-  exists at runtime.
-- `:exit` visitors (`"MethodDefinition:exit"`) work. Use them to collect facts
-  during a subtree walk and decide on exit.
-- There is **no cross-file resolution**. A rule that needs to follow an imported
-  type can only scan `Program.body` of the same module — a real limitation to
-  document per rule, not a bug.
-- Comments are not visited. Reach them with
-  `context.sourceCode.getAllComments()` from a `Program` visitor;
-  `comment.value` excludes the leading `//`, so `trimStart()` before matching.
-- `TSParameterProperty.accessibility` is **declared in the typings but never
-  populated** — `constructor(private a: number)` reports `undefined`. Since
-  `readonly` alone also creates a parameter property, the node's presence proves
-  nothing; read the modifier tokens from the source text between the node start
-  and `node.parameter.range[0]`. `PropertyDefinition`, `MethodDefinition`, and
-  `AccessorProperty` do populate it correctly.
-- `MethodDefinition` needs no visitor of its own. Its `value` is a
-  `FunctionExpression` (or `TSEmptyBodyFunctionExpression` for an overload
-  signature), and both are visited in their own right — adding one double
-  reports. Conversely, a rule walking functions must include
-  `TSEmptyBodyFunctionExpression` and `TSMethodSignature` or interface methods,
-  abstract methods, and overload signatures slip through entirely.
+- The AST is ESTree / TS-ESTree, typed by `ESTree` from `@oxlint/plugins`.
+- String literals are node type **`Literal`** with a `.value`.
+- Abstract members are **`TSAbstractMethodDefinition`** and
+  **`TSAbstractPropertyDefinition`**, not `MethodDefinition` and
+  `PropertyDefinition`; both share the same TypeScript interface, whose `type`
+  is a two-member union. A rule matching one must match both.
+- An overload signature or abstract method is a `TSEmptyBodyFunctionExpression`
+  under its method node, and interface methods are `TSMethodSignature`. A rule
+  walking functions must include both or they slip through.
+- `MethodDefinition` needs no visitor of its own: its `value` is visited in its
+  own right, so adding one double reports.
 - `Property` covers destructuring as well as object literals. Check
   `node.parent.type === "ObjectExpression"` to tell a declared key from a bound
   name.
-- `AccessorProperty` is a dead end for anything type-related. Its `optional` is
-  **declared but never populated** (`accessor g?: string` reports `false`, the
-  same trap as `TSParameterProperty.accessibility`), it is **not a member of the
-  `Deno.lint.Node` union** so `getText(node)` will not type-check on it, it
-  carries **no `typeAnnotation` field at runtime**, and the walker **never
-  descends into its type annotation** — a visitor on `TSUndefinedKeyword` or
-  `TSNullKeyword` simply never fires there. Only the source text is reachable:
-  `getText()` with no argument returns the whole file, which slices by absolute
-  range. `PropertyDefinition.optional`, `TSPropertySignature.optional`, and
-  `TSMethodSignature.optional` are all correct by contrast.
-- Getters and setters cannot carry the optional marker — `get g?()` is a syntax
-  error, in a class and in an interface alike.
-- A parameter binding's `parent` can be `TSParameterProperty` at runtime, but
-  the typings do not admit it. Compare such parent types through a
-  `readonly string[]` rather than a literal union, or the comparison is a
-  compile error rather than a false negative.
-- `TSTypeReference["typeName"]` is
-  `Identifier | ThisExpression |
-  TSQualifiedName`. There is no
-  `Deno.lint.EntityName` alias — derive the type from the field itself so it
-  cannot drift.
+- `TSParameterProperty` wraps the parameter; the type annotation's parent is
+  still the inner `Identifier`, with `optional` populated.
+- **`AccessorProperty` type annotations are walked**, unlike Deno.
+  `accessor a: string | undefined` reports from a `TSUndefinedKeyword` visitor.
+  `accessor a?: T` does not parse at all.
+- Oxlint's parser rejects a required parameter after an optional one, so test
+  snippets must be valid TypeScript, not just valid syntax.
+- `RuleTester` (from `vite-plus/lint/plugins-dev`) counts **lines from 1 and
+  columns from 0**, unlike ESLint's 1-based columns. `spanOf` in `#testing`
+  computes the expected span from the source text.
+- Oxlint loads a `.ts` plugin from a relative path directly on Node 24, `#`
+  imports included.
+- Oxlint and Oxfmt respect `.gitignore`; that is the only reason `dist/` and
+  `node_modules/` are not linted.
 
 ### Docs gotcha
 
-`deno fmt` reformats `` ```ts `` blocks inside Markdown, and **silently deletes
-constructs that are invalid at top level** — a decorator on a bare field, for
-instance. Always wrap such examples in a `class … { }` body. In this repo the
-common case is a bare `readonly` or `private` modifier: put it in a class.
+`vp fmt` reformats Markdown, tables included. Keep ` ```ts ` examples valid at
+top level; wrap a bare `readonly` or `private` modifier in a `class … { }` body.
 
 ### Integration testing
 
-Unit tests use `Deno.lint.runPlugin`; that is not the deployment path. Before
-release, also run real `deno lint` from a _separate_ consumer project against a
-deliberately-bad file and a known-good one. On the sibling Lit plugin that check
-caught two bugs 313 unit tests missed.
+Unit tests run rules through `RuleTester`; that is not the deployment path.
+Before release, `vp pack`, `npm pack`, install the tarball into a _separate_
+consumer project, and run `vp lint` against a deliberately-bad file and a
+known-good one — once through `extends: [concreteConfig, …]` and once through
+`jsPlugins`. On the sibling Lit plugin that check caught two bugs 313 unit tests
+missed.
 
 ---
 
@@ -259,10 +224,10 @@ to UPPER_SNAKE_CASE — the casing `upper-snake-string-unions` itself prescribes
 keeps the intended target and clears every one of those, and it let the
 `deno-lint-ignore-file` lines come out of this repo's own rule files.
 
-The two rules divide cleanly with Deno's built-in `camelcase`, verified against
-2.9.3: the built-in reports unquoted `snake_case` keys, and accepts both
-`PENDING` and any quoted key. This rule covers exactly the `PENDING` case the
-built-in waves through, and leaves quoted foreign names alone.
+Under Deno the rule divided cleanly with the built-in `camelcase`, which
+reported unquoted `snake_case` keys. Oxlint ships no `camelcase` rule, so since
+the port `snake_case` keys go unreported. Widening this rule to cover them would
+reopen the foreign-vocabulary problem above, so it was left as is.
 
 `upper-snake-string-unions` visits `TSUnionType` rather than
 `TSTypeAliasDeclaration`, so a union written inline on an interface member
@@ -334,26 +299,13 @@ rule's own prescription, and the second step came from `no-optional-null`:
 `node: Identifier | null | undefined` → `node?: Identifier | null` →
 `node: Identifier | null`.
 
-**Neither rule can see an `accessor` field's type, and that was left alone on
-purpose.** Deno's lint AST never walks an `AccessorProperty` type annotation,
-and the node has no `typeAnnotation` at runtime either — verified against 2.9.3
-by reading `sourceCode.ast` directly, so it is a hard limit rather than a
-typings gap. `accessor a: string | undefined` and `accessor a?: string | null`
-both pass.
-
-A source-text scanner was written to close it and then deleted. The numbers from
-`../memona`, which uses `accessor` 224 times across 35 files:
-
-- `accessor x?:` — **zero occurrences**. Lit fields carry an initialiser, so the
-  `?` marker never appears on one and `no-optional-null` would gain nothing.
-- `accessor x: T | undefined` — a handful, e.g. `checked: boolean | undefined`.
-  These are real misses for `no-undefined-type`.
-
-So the gain was a few sites on one rule, against ~90 lines of hand-rolled
-tokenizing — bracket depth, quoted spans, cutting at the initialiser's `=` — in
-a package where every other rule reads the tree. Text matching would misread a
-string-literal type containing `null` and a generic default, and a false
-positive costs more than this miss. Both rule docs record the gap.
+**`accessor` fields were a blind spot under Deno and no longer are.** Deno's
+lint AST never walked an `AccessorProperty` type annotation, so
+`accessor a: string | undefined` passed; a source-text scanner was written to
+close the gap and deleted as not worth ~90 lines of tokenizing. Oxlint walks the
+annotation, so `no-undefined-type` now reports it with no extra code.
+`accessor a?: string | null` does not parse under Oxlint, so `no-optional-null`
+has nothing to see there.
 
 ## Where the through-line stops
 
@@ -381,7 +333,7 @@ are handed gets reached into. Banning indexed access would leave no legal way to
 name the second kind.
 
 This package hits the same wall, which is how the gap was found. Typing a rule
-record against Deno's plugin API:
+record against Deno's plugin API (and now Oxlint's, the same way):
 
 | Annotation                        | Result                      |
 | --------------------------------- | --------------------------- |
@@ -389,6 +341,9 @@ record against Deno's plugin API:
 | `{ [k: string]: Deno.lint.Rule }` | `no-index-signatures`       |
 | none                              | JSR `missing-explicit-type` |
 | `Deno.lint.Plugin["rules"]`       | the only one that passes    |
+
+Under Oxlint the passing form is `Plugin["rules"]` from `@oxlint/plugins`, and
+the preset configs' `rules` are typed through `OxlintConfig` the same way.
 
 All four were checked. So the line is: **named transformations** (`keyof`,
 `typeof`, utility types, mapped types) are banned; picking a single field out of
@@ -403,7 +358,7 @@ everything it touches.
 
 ## Ways of being implicit that are left alone
 
-Checked against a real `deno lint` run; each is a decision, not an oversight.
+Checked against a real `deno lint` run before the port; each is a decision, not an oversight.
 
 - **Template literal types** — `` type Path = `FILE_${Token}` ``. Same defect as
   a mapped type: the reader has to expand it. Left out because it shows up
@@ -448,8 +403,9 @@ and the `as const` object used as a fake enum (`typeof F[keyof typeof F]` trips
   deriving it, which is what the through-line asks for.
 - The `EventTarget` ban from memona's `restricted-types` — a memona-specific
   architectural rule, and unconfigurable here.
-- `no-any` and non-null-assertion bans — Deno already ships `no-explicit-any`
-  and `no-non-null-assertion`. Recommend those in the README instead of
+- `no-any` and non-null-assertion bans — Oxlint already ships
+  `typescript/no-explicit-any` and `typescript/no-non-null-assertion`.
+  Recommend those in the README instead of
   duplicating them.
 - Anything Lit-specific — that is `deno-lint-plugin-lit`'s job.
 

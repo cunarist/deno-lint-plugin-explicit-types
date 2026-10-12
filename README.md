@@ -1,48 +1,66 @@
-# deno-lint-plugin-explicit-types
+# oxlint-plugin-explicit-types
 
-TypeScript style rules for `deno lint`. Types should get written out, not
-derived.
+TypeScript style rules for [Oxlint](https://oxc.rs/docs/guide/usage/linter).
+Types should get written out, not derived.
 
 ## Setup
 
-```jsonc
-// deno.json
-{
-  "lint": {
-    "plugins": [
-      "jsr:@cunarist/deno-lint-plugin-explicit-types/concrete",
-      "jsr:@cunarist/deno-lint-plugin-explicit-types/naming",
-      "jsr:@cunarist/deno-lint-plugin-explicit-types/absence"
-    ]
-  }
-}
+Requires Node.js 24 or later.
+
+```sh
+npm install --save-dev @cunarist/oxlint-plugin-explicit-types
 ```
 
-Three plugins, added separately. Adding one turns on every rule in it, so turn
-one off by id:
-
-```jsonc
-{ "lint": { "rules": { "exclude": ["explicit-concrete/no-type-assertion"] } } }
-```
-
-Or import the rules and build your own plugin. Each entry point exports its
-rules individually, plus `concreteRules`, `namingRules`, and `absenceRules` for
-taking a whole set:
+Three presets, each its own plugin. Extend the ones you want; each config loads
+its plugin and turns on every rule in it:
 
 ```ts
-// lint.ts
-import { concreteRules } from "jsr:@cunarist/deno-lint-plugin-explicit-types/concrete";
-import { noEnum } from "jsr:@cunarist/deno-lint-plugin-explicit-types/naming";
+// vite.config.ts
+import { absenceConfig } from "@cunarist/oxlint-plugin-explicit-types/absence";
+import { concreteConfig } from "@cunarist/oxlint-plugin-explicit-types/concrete";
+import { namingConfig } from "@cunarist/oxlint-plugin-explicit-types/naming";
+import { defineConfig } from "vite-plus";
 
-const plugin: Deno.lint.Plugin = {
-  name: "my-types",
-  rules: { ...concreteRules, "no-enum": noEnum },
-};
-
-export default plugin;
+export default defineConfig({
+  lint: {
+    extends: [concreteConfig, namingConfig, absenceConfig],
+    rules: {
+      // Rules after `extends` win, so turn one off by id.
+      "explicit-concrete/no-type-assertion": "off",
+    },
+  },
+});
 ```
 
-Your diagnostics then read `my-types/no-enum`.
+The same objects work in `oxlint.config.ts` without Vite+. Or load a plugin and
+pick its rules by hand:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite-plus";
+
+export default defineConfig({
+  lint: {
+    jsPlugins: ["@cunarist/oxlint-plugin-explicit-types/naming"],
+    rules: {
+      "explicit-naming/no-enum": "error",
+    },
+  },
+});
+```
+
+| Entry        | Plugin name         | Config           | Rule record     |
+| ------------ | ------------------- | ---------------- | --------------- |
+| `./concrete` | `explicit-concrete` | `concreteConfig` | `concreteRules` |
+| `./naming`   | `explicit-naming`   | `namingConfig`   | `namingRules`   |
+| `./absence`  | `explicit-absence`  | `absenceConfig`  | `absenceRules`  |
+
+Each entry's default export is the plugin. It also exports every rule
+individually, for composing a plugin of your own.
+
+The plugins also load in ESLint 9 flat config, under `plugins`, with
+`typescript-eslint`'s parser. The `…Config` objects are Oxlint configs, so
+there list rules by hand.
 
 ## `/concrete` — write the type out
 
@@ -163,20 +181,21 @@ rather than annotations.
 
 ## Pairs well with
 
-`no-explicit-any` and `no-non-null-assertion`, both built into Deno. This plugin
-leaves them alone rather than duplicating them.
+Oxlint's built-in `typescript/no-explicit-any` and
+`typescript/no-non-null-assertion`. This plugin leaves them alone rather than
+duplicating them.
 
 ## Known limits
 
-- **No rule options.** Deno's plugin API cannot configure a rule.
+- **No rule options.** Every rule is on or off; none takes settings.
 - **One file at a time.** No cross-file resolution, so `no-utility-types` sees
   `Partial<T>` where it is written but not through a local alias.
 - **Syntax, not types.** `no-type-assertion` sees `x as T`, not an assertion
   laundered through a function signature.
 - **Names you didn't choose are left alone.** `no-upper-snake-object-keys` only
   reports UPPER_SNAKE_CASE, so custom element tags, `data-*` attributes, HTTP
-  headers and library keymaps pass. Unquoted `snake_case` is Deno's built-in
-  `camelcase` rule's job.
+  headers and library keymaps pass. Unquoted `snake_case` keys pass too; Oxlint
+  has no `camelcase` rule to catch them.
 
 ## License
 
