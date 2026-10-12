@@ -1,3 +1,7 @@
+import type { Rule } from "@oxlint/plugins";
+
+import { docsUrl } from "#helpers";
+
 /**
  * `no-inline-object-types` — rejects an object shape written inline in a type
  * position, `{ a: string }`.
@@ -6,16 +10,23 @@
  * as an `interface` gives the same shape a name that error messages, imports,
  * and the next reader can all use.
  */
-export const noInlineObjectTypes: Deno.lint.Rule = {
-  create(ctx) {
+export const noInlineObjectTypes: Rule = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "Rejects an object shape written inline in a type position.",
+      url: docsUrl("concrete", "no-inline-object-types"),
+    },
+    schema: [],
+    messages: {
+      inlineObjectType:
+        "Inline object type. Declare an `interface` and use its name here, so the shape can be referenced and documented.",
+    },
+  },
+  createOnce(context) {
     return {
       TSTypeLiteral(node) {
-        ctx.report({
-          node,
-          message: "Inline object type.",
-          hint:
-            "Declare an `interface` and use its name here, so the shape can be referenced and documented.",
-        });
+        context.report({ node, messageId: "inlineObjectType" });
       },
     };
   },

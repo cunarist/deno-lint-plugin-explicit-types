@@ -45,6 +45,6 @@ type Titles = Map<string, string>;
   function call — is untouched, because it is not a `TSTypeReference`.
 - `Readonly<T>` is reported here as a utility type. The bare `readonly` keyword
   is a separate concern, and this package does not police it.
-- `Deno.lint.Plugin["rules"]` is `Record<string, Rule>`, but an indexed access
-  type is not a `TSTypeReference`, so it passes. That is deliberate — see the
+- `Plugin["rules"]` from `@oxlint/plugins` is `Record<string, Rule>`, but an
+  indexed access type is not a `TSTypeReference`, so it passes. That is deliberate — see the
   note on derivation in `AGENTS.md`.

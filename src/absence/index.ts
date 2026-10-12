@@ -6,41 +6,45 @@
  * also admitting `null`. A member or parameter says absence with `?`; a return
  * type or variable, which cannot take `?`, says it with `| null`.
  *
- * ```jsonc
- * // deno.json
- * {
- *   "lint": {
- *     "plugins": ["jsr:@cunarist/deno-lint-plugin-explicit-types/absence"]
- *   }
- * }
- * ```
- *
  * @module
  */
+
+import { eslintCompatPlugin, type Plugin } from "@oxlint/plugins";
+import type { OxlintConfig } from "oxlint";
+
+import { presetConfig } from "#helpers";
 
 import { noOptionalNull } from "./no-optional-null.ts";
 import { noUndefinedType } from "./no-undefined-type.ts";
 
 /**
- * The `explicit-absence` rules, for composing your own plugin.
+ * The `explicit-absence` rules, keyed by rule id.
  *
  * Built from pairs rather than written as an object literal: a rule record is
  * a lookup keyed by rule id, so the ids belong in value position. This is
  * `no-upper-snake-object-keys` applied to itself.
  */
-export const absenceRules: Deno.lint.Plugin["rules"] = Object.fromEntries([
+export const absenceRules: Plugin["rules"] = Object.fromEntries([
   ["no-undefined-type", noUndefinedType],
   ["no-optional-null", noOptionalNull],
 ]);
 
-/** The `explicit-absence` plugin, ready to list in `deno.json` `lint.plugins`. */
-const plugin: Deno.lint.Plugin = {
-  name: "explicit-absence",
+/** The `explicit-absence` plugin, for Oxlint `jsPlugins` or ESLint `plugins`. */
+const plugin: Plugin = eslintCompatPlugin({
+  meta: { name: "explicit-absence" },
   rules: absenceRules,
-};
+});
 
-// Individual rules, re-exported for composition.
-export { noOptionalNull } from "./no-optional-null.ts";
-export { noUndefinedType } from "./no-undefined-type.ts";
+/**
+ * An Oxlint config that loads `explicit-absence` and turns every rule in it on, for
+ * `lint.extends`. Override a rule after it to turn that one off.
+ */
+export const absenceConfig: OxlintConfig = presetConfig(
+  "absence",
+  "explicit-absence",
+  absenceRules,
+);
+
+export { noOptionalNull, noUndefinedType };
 
 export default plugin;

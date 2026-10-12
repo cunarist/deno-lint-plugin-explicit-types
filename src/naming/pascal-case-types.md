@@ -50,5 +50,6 @@ class DataStore {}
   should still be PascalCase.
 - Only declaration names are checked. Uses of a badly-named type imported from
   another module are not reported — there is no cross-file resolution.
-- Type parameters, variables, functions, and properties are out of scope. Deno's
-  built-in `camelcase` rule covers the value side.
+- Type parameters, variables, functions, and properties are out of scope. The
+  value side is not covered by this package, and Oxlint ships no `camelcase`
+  rule.

@@ -43,7 +43,6 @@ function findNote(id: string): Note | null {}
 - `void` is untouched. A function returning nothing still writes `: void`.
 - Indexed access still names someone else's `undefined`: `Options["signal"]` is
   clean even when that field is optional in their declaration.
-- **Not caught: `accessor a: string | undefined`.** Deno's lint AST never walks
-  an `AccessorProperty` type annotation and the node carries no `typeAnnotation`
-  field at runtime (verified against 2.9.3), so the type is unreachable.
+- `accessor a: string | undefined` is reported. Oxlint walks an `accessor`
+  field's type annotation like any other.
 - Syntax only. `let x;` has no annotation and is not this rule's business.

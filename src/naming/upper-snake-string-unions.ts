@@ -1,4 +1,6 @@
-import { literalString } from "#helpers";
+import type { Rule } from "@oxlint/plugins";
+
+import { docsUrl, literalString } from "#helpers";
 
 /** `ONE`, `ONE_TWO`, `HTTP2_PUSH` — uppercase segments joined by underscores. */
 const UPPER_SNAKE_CASE_PATTERN = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
@@ -14,8 +16,20 @@ const UPPER_SNAKE_CASE_PATTERN = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
  * Every union is checked, not only the ones behind a type alias — a union
  * written inline on an interface member is the same enumeration.
  */
-export const upperSnakeStringUnions: Deno.lint.Rule = {
-  create(ctx) {
+export const upperSnakeStringUnions: Rule = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "Requires every string literal member of a union type to be UPPER_SNAKE_CASE.",
+      url: docsUrl("naming", "upper-snake-string-unions"),
+    },
+    schema: [],
+    messages: {
+      notUpperSnake:
+        'String union member "{{value}}" is not UPPER_SNAKE_CASE. Rewrite the member as an uppercase token, e.g. "IN_PROGRESS".',
+    },
+  },
+  createOnce(context) {
     return {
       TSUnionType(node) {
         for (const member of node.types) {
@@ -23,11 +37,10 @@ export const upperSnakeStringUnions: Deno.lint.Rule = {
           const value = literalString(member.literal);
           if (value === null) continue;
           if (UPPER_SNAKE_CASE_PATTERN.test(value)) continue;
-          ctx.report({
+          context.report({
             node: member,
-            message: `String union member "${value}" is not UPPER_SNAKE_CASE.`,
-            hint:
-              'Rewrite the member as an uppercase token, e.g. "IN_PROGRESS".',
+            messageId: "notUpperSnake",
+            data: { value },
           });
         }
       },

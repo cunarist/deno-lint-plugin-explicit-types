@@ -53,8 +53,8 @@ const ids = tasks.map((task) => task.id);
   literal is also left alone.
 - Interface and type-literal method signatures are checked.
   `interface I { m() }` fires; `interface I { m(): void }` does not.
-- Overload signatures are checked as well — they are the declaration a caller
-  reads.
+- Overload signatures and abstract methods are checked as well — they are the
+  declaration a caller reads.
 - The report highlights the function's name where it has one, and the whole
   function otherwise, so an anonymous assigned arrow points at the arrow.
 - `async` functions are checked like any other; the annotation is the

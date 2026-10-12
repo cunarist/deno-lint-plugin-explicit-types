@@ -1,4 +1,6 @@
-import { keyText } from "#helpers";
+import type { ESTree, Rule } from "@oxlint/plugins";
+
+import { docsUrl, keyText } from "#helpers";
 
 /** `OPEN`, `IN_PROGRESS`, `HTTP2_PUSH` — the casing a string union member has. */
 const UPPER_SNAKE_CASE_PATTERN = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
@@ -11,19 +13,26 @@ const UPPER_SNAKE_CASE_PATTERN = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
  * is a lookup table keyed by the union — and a lookup table stays silent when
  * the union gains a member. A `switch` does not.
  */
-export const noUpperSnakeObjectKeys: Deno.lint.Rule = {
-  create(ctx) {
-    function check(key: Deno.lint.Node, computed: boolean): void {
+export const noUpperSnakeObjectKeys: Rule = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "Rejects UPPER_SNAKE_CASE object keys and type members.",
+      url: docsUrl("naming", "no-upper-snake-object-keys"),
+    },
+    schema: [],
+    messages: {
+      upperSnakeKey:
+        "Object key `{{text}}` is UPPER_SNAKE_CASE. That is a string union member, so this object is a lookup keyed by the union. Write a function that switches on it instead, and a new member becomes a compile error.",
+    },
+  },
+  createOnce(context) {
+    function check(key: ESTree.Node, computed: boolean): void {
       // A computed key cannot be judged from syntax alone.
       if (computed) return;
       const text = keyText(key);
       if (text === null || !UPPER_SNAKE_CASE_PATTERN.test(text)) return;
-      ctx.report({
-        node: key,
-        message: `Object key \`${text}\` is UPPER_SNAKE_CASE.`,
-        hint:
-          "That is a string union member, so this object is a lookup keyed by the union. Write a function that switches on it instead, and a new member becomes a compile error.",
-      });
+      context.report({ node: key, messageId: "upperSnakeKey", data: { text } });
     }
 
     return {

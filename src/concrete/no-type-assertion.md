@@ -20,7 +20,7 @@ what is written right there.
 ```ts
 // BAD
 const el = node as HTMLInputElement;
-const n = <number> input;
+const n = <number>input;
 
 // GOOD
 const el = node instanceof HTMLInputElement ? node : null;
@@ -35,8 +35,8 @@ const MODES = ["READ", "WRITE"] as const;
   bare type reference `const`; an assertion to a real type named `Const` is
   still reported.
 - `x as unknown as T` reports twice, once per assertion.
-- Non-null assertions (`x!`) are not this rule's business — Deno's built-in
-  `no-non-null-assertion` already covers them.
+- Non-null assertions (`x!`) are not this rule's business — Oxlint's built-in
+  `typescript/no-non-null-assertion` already covers them.
 - `satisfies` looks related but is not reported. It checks a value against a
   type without overruling the compiler, and unlike an assertion it keeps the
   narrow inferred type — which is more precise than an annotation, not less.

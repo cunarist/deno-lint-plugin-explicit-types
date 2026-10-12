@@ -1,3 +1,7 @@
+import type { Rule } from "@oxlint/plugins";
+
+import { docsUrl } from "#helpers";
+
 /**
  * `no-conditional-types` — rejects conditional types and the `infer` keyword.
  *
@@ -5,24 +9,28 @@
  * what a value is, and `infer` names a type nobody wrote. Both move the answer
  * out of the declaration and into the compiler.
  */
-export const noConditionalTypes: Deno.lint.Rule = {
-  create(ctx) {
+export const noConditionalTypes: Rule = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "Rejects conditional types and the `infer` keyword.",
+      url: docsUrl("concrete", "no-conditional-types"),
+    },
+    schema: [],
+    messages: {
+      conditional:
+        "Conditional type. Write each resulting type out and name it, so the reader does not have to evaluate the branch.",
+      infer:
+        "`infer` in a type position. Name the type you are extracting and write it out, rather than having the compiler recover it.",
+    },
+  },
+  createOnce(context) {
     return {
       TSConditionalType(node) {
-        ctx.report({
-          node,
-          message: "Conditional type.",
-          hint:
-            "Write each resulting type out and name it, so the reader does not have to evaluate the branch.",
-        });
+        context.report({ node, messageId: "conditional" });
       },
       TSInferType(node) {
-        ctx.report({
-          node,
-          message: "`infer` in a type position.",
-          hint:
-            "Name the type you are extracting and write it out, rather than having the compiler recover it.",
-        });
+        context.report({ node, messageId: "infer" });
       },
     };
   },

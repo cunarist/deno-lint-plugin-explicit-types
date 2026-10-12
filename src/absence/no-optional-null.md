@@ -10,7 +10,8 @@ which one arrives, and the body has to handle both for one condition:
 
 ```ts
 function open(path?: string | null): void {
-  if (path === undefined || path === null) {} // both, every time
+  if (path === undefined || path === null) {
+  } // both, every time
 }
 open();
 open(null); // same meaning, different call
@@ -50,9 +51,10 @@ interface Job {
   clean. Absence still has one spelling there — the default supplies `null`.
 - Covers a bare `p?: null` as well as a union, and applies to function types and
   method signatures the same way as to declarations.
-- **Not caught: `accessor a?: string | null`.** Deno's lint AST never walks an
-  `AccessorProperty` type annotation and the node carries no `typeAnnotation`
-  field at runtime (verified against 2.9.3), so the type is unreachable.
+- `accessor a?: string | null` is not reported because it never parses: Oxlint's
+  parser rejects the `?` marker on an `accessor` field, so there is nothing to
+  lint.
+- Abstract members are covered: `abstract a?: string | null` fires.
 - The choice between the two fixes is a real one. `?` lets the caller forget the
   value; `| null` makes them write the absence. Take the second when they ought
   to decide.

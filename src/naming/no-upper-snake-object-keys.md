@@ -47,9 +47,9 @@ function labelOf(state: TaskState): string {
 - Names defined elsewhere pass, which is the reason for the narrow shape:
   `"cl-zip-dialog"` (HTML requires the hyphen), `"data-language"`,
   `"Content-Type"`, `"Mod-z"`, `$anchor`, `TSIndexSignature`, `ToggleBold`.
-- `snake_case` keys are left to Deno's built-in `camelcase` rule, which already
-  reports them. This rule covers the case that one deliberately permits — its
-  own hint calls `PENDING` an acceptable constant.
+- `snake_case` keys are left alone. Under Deno this split with the built-in
+  `camelcase` rule, which reported them; Oxlint ships no `camelcase` rule, so
+  `{ user_id: 1 }` now goes unreported by any default rule.
 - Quoting is not an escape hatch. `{ "PENDING": 1 }` fires exactly as
   `{ PENDING: 1 }` does; the rule reads the spelling, not the syntax around it.
 - Class members are not checked. `static MAX_RETRIES = 5` is a constant, not a

@@ -1,4 +1,6 @@
-import { typeNameTail } from "#helpers";
+import type { Rule } from "@oxlint/plugins";
+
+import { docsUrl, typeNameTail } from "#helpers";
 
 /** The 22 built-in TypeScript utility types this rule rejects. */
 const UTILITY_TYPE_NAMES: readonly string[] = [
@@ -33,18 +35,25 @@ const UTILITY_TYPE_NAMES: readonly string[] = [
  * to apply `Partial`/`Omit`/`ReturnType` in their head against a definition
  * that lives somewhere else to know what the value actually is.
  */
-export const noUtilityTypes: Deno.lint.Rule = {
-  create(ctx) {
+export const noUtilityTypes: Rule = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "Rejects the 22 built-in TypeScript utility types.",
+      url: docsUrl("concrete", "no-utility-types"),
+    },
+    schema: [],
+    messages: {
+      utilityType:
+        "Utility type `{{name}}`. Write the resulting type out, so the shape is readable without applying the transformation.",
+    },
+  },
+  createOnce(context) {
     return {
       TSTypeReference(node) {
         const name = typeNameTail(node.typeName);
         if (name === null || !UTILITY_TYPE_NAMES.includes(name)) return;
-        ctx.report({
-          node,
-          message: `Utility type \`${name}\`.`,
-          hint:
-            "Write the resulting type out, so the shape is readable without applying the transformation.",
-        });
+        context.report({ node, messageId: "utilityType", data: { name } });
       },
     };
   },

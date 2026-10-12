@@ -1,24 +1,21 @@
 /**
  * Generic AST helpers.
  *
- * IMPORTANT: lint AST nodes expose their fields as prototype getters, so
- * `Object.keys(node)` returns an empty array. Never traverse generically with
- * `Object.keys`/`Object.values` — always access fields by name.
+ * Oxlint hands rules an ESTree / TS-ESTree tree, typed by the `ESTree`
+ * namespace of `@oxlint/plugins`. Access fields by name rather than walking
+ * `Object.keys(node)` — the tree is deserialized lazily, so generic traversal
+ * is both slow and not guaranteed to see every field.
  */
 
-/** Any node carrying a source range, which is all `context.report` needs. */
-export interface RangedNode {
-  readonly range: Deno.lint.Range;
-}
+import type { ESTree } from "@oxlint/plugins";
 
 /**
  * The `typeName` of a `TSTypeReference`.
  *
- * Deno's typings have no `EntityName` alias — the field is this three-member
- * union, and `ThisExpression` is in it because `this` is a legal type. Derived
- * from the field itself so it cannot drift.
+ * Derived from the field itself so it cannot drift: an identifier, a
+ * qualified name, or `this`, which is a legal type.
  */
-export type TypeNameNode = Deno.lint.TSTypeReference["typeName"];
+export type TypeNameNode = ESTree.TSTypeReference["typeName"];
 
 /**
  * Dotted name of a type reference's `typeName`, e.g. `React.ReactNode`.
@@ -52,20 +49,13 @@ export function typeNameTail(node: TypeNameNode): string | null {
  * The written form of an object or type member key, or `null` when it cannot
  * be read from syntax alone — a computed key such as `[token]`.
  */
-export function keyText(key: Deno.lint.Node): string | null {
+export function keyText(key: ESTree.Node): string | null {
   if (key.type === "Identifier") return key.name;
   return literalString(key);
 }
 
 /** The string value of a literal node, or `null` if it is not a string. */
-export function literalString(node: Deno.lint.Node): string | null {
+export function literalString(node: ESTree.Node): string | null {
   if (node.type !== "Literal") return null;
   return typeof node.value === "string" ? node.value : null;
-}
-
-/** Name of an identifier that may be absent, e.g. an anonymous class's `id`. */
-export function identifierName(
-  node: Deno.lint.Identifier | null,
-): string | null {
-  return node ? node.name : null;
 }
