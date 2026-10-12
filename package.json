@@ -1,0 +1,41 @@
+{
+  "name": "@cunarist/oxlint-plugin-explicit-types",
+  "version": "0.6.0",
+  "description": "Oxlint rules that keep TypeScript types written out rather than derived, and names carrying their contract.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cunarist/deno-lint-plugin-explicit-types.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "imports": {
+    "#helpers": "./src/helpers/index.ts",
+    "#testing": "./src/testing/index.ts"
+  },
+  "exports": {
+    "./concrete": "./dist/concrete.js",
+    "./naming": "./dist/naming.js",
+    "./absence": "./dist/absence.js"
+  },
+  "dependencies": {
+    "@oxlint/plugins": "^1.87.0"
+  },
+  "devDependencies": {
+    "vite-plus": "^1.1.0"
+  },
+  "peerDependencies": {
+    "oxlint": "^1.87.0"
+  },
+  "peerDependenciesMeta": {
+    "oxlint": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "npm@11.17.0"
+}
